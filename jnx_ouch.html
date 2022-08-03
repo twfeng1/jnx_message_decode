@@ -1,0 +1,165 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"> 
+<!-- <script src="js/jquery.min.js"></script> -->
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+  
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+<!-- <link rel="stylesheet" href="bootstrap/css/bootstrap.min.css">  -->
+
+<script src="https://cdn.jsdelivr.net/npm/lodash@4.17.15/lodash.min.js" integrity="sha256-VeNaFBVDhoX3H+gJ37DpT/nTuZTdjYro9yBruHjVmoQ=" crossorigin="anonymous"></script>
+
+
+<script  type="text/javascript" src="js/binary-parser-bundled.js"></script>
+<script  type="text/javascript" src="js/ouch-decode.js"></script>
+
+<script type="text/javascript" >
+</script>
+<script>
+    var Parser = nodejsexports["binary-parser"].Parser;
+    var Buffer = nodejsexports["Buffer"];
+
+
+    function decodeOUCH() {
+
+       // var raw = document.getElementById('ouchmsg').value.trim();
+
+        var rawBuf =  Buffer.from(document.getElementById('ouchmsg').value.trim(),'hex');
+       // console.log(isValidHexString(raw));
+        //var ouchmsg = new fixnetix.trading.couch.messages.AddOrder(hextoArrayBuffer(raw));
+        var start = new Date().getTime();
+
+    //    var ouchmsg = OUCH_DECODER(raw);
+   //   console.log(parseOUCHBuffer(Buffer.from(raw,'hex')));
+
+        var ouchmsg =  parseOUCHBuffer(rawBuf);
+
+        var end = new Date().getTime();
+        var time = end - start;
+        console.log('execution time= ' + time);
+        console.log(ouchmsg );
+
+
+        //$("#main-table tr").not(function(){if ($(this).has('th').length){return true}}).remove();
+        $("#main-table").find("tr:gt(0)").remove();
+        var template = _.template("<tr><td><%- Line %></td><td><%- FieldName %><td><%- Value %></td><td><%- RawValue %></td></td><td><%- Type %></td><td><%- Length %></td></tr>");
+        var line = 1;
+        var byte_position=0;
+
+        var type_mapping= {
+            'JNX_Token' : 'INTEGER',
+            'JNX_Alpha' : 'STRING',
+            'JNX_Integer': 'INTEGER',
+            'JNX_Timestamp' : 'TIMESTAMP NANOSECONDS'
+        }
+
+        _.each(ouchmsg, (value,key)=>{
+            var fieldInfo = _.get(jnx_fields_meta_data,key,{});
+            var fieldRawHexString = rawBuf.slice(byte_position, byte_position+ _.get(fieldInfo,'len')).toString('hex').match(/.{1,2}/g).join(' ');
+            byte_position =byte_position+fieldInfo['len'];
+            var fieldValueDescription =  _.get(jnx_fields_meta_data,[key,'validValues',value].join('.'));
+            var tr = template({
+                Line: line,FieldName: key  ,Type: _.get( type_mapping,  _.get(fieldInfo,'type'), _.get(fieldInfo,'type')) ,Length: _.get(fieldInfo,'len'),RawValue: fieldRawHexString,Value: (_.isEmpty(fieldValueDescription) ? value :  [value, ' (',fieldValueDescription , ')'].join('') )
+            });
+
+            $("#main-table").find('tbody').append(tr);
+           line++;
+        });
+
+
+       // document.getElementById("msgTypeLabel").innerHTML = "" + ((_.isEmpty(ouchmsg.getField("Type"))) ? "" : (ouchmsg.getField("Type").getAnnotatedPrintValue()));
+    }
+
+    function resetForm() {$('#ouchmsg').val('')}
+
+</script>
+<div class="well"><b>Japannext OUCH Message Parser By Wei Feng</b></div>
+<div class="row">
+<div class="col-sm-2"><label for="selectbox1"> Sample Messages:</label><select multiple class="form-control" id="selectbox1" multiple style="height: 170px"></select></div>
+<div class="col-sm-9"><label for="ouchmsg">Raw Hex Message:</label><textarea class="form-control" rows="8" id="ouchmsg"></textarea></div>
+</div>
+
+
+<div class="row">
+    <div class="col-sm-2"><button  style="margin-left:10px; margin-top:10px; display: block; width: 100%"  type="button" class="btn btn-default btn-lg" onClick="decodeOUCH(); " ><span class="glyphicon glyphicon-search"></span> Decode  </button>                        </button>
+    </div>
+    <div class="col-sm-2"><button  style="margin-left:0px; margin-top:10px; display: block; width: 100%"  type="button" class="btn btn-default btn-lg" onClick="resetForm();" ><span class="glyphicon glyphicon-trash"></span> Reset  </button>
+    </div>
+  </div>
+        <!--
+<button type="button" onClick="decodeOUCH(); ">Decode</button> -->
+<!--<p id="msgTypeLabel">Message Type:</p> -->
+
+<HR>
+<h4 >   &nbsp&nbspType: <span id="msgTypeLabel" class="label label-primary"></span></h4>
+
+<table border="1" cellpadding="1" cellspacing="1" style="height: 10px; width: 1000px;" id="msgtable">
+    <tbody id="msgtablebody">
+    </tbody>
+</table>
+
+
+
+<div style="width:100%">
+    <table class="table table-hover table-condensed table-striped" id="main-table">
+        <thead > <tr  ><th>No.</th> <th>FieldName</th> <th>Value</th> <th>HexValue</th> <th>Type</th> <th>Length(Bytes)</th> </tr> </thead>
+
+        <tbody>
+        <tr>
+            <td width="5%">&nbsp</td>
+            <td width="20%">&nbsp</td>
+            <td width="10%">&nbsp</td>
+            <td width="35%">&nbsp</td>
+            <td width="10%">&nbsp</td>
+            <td width="8%">&nbsp</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+
+
+<script>
+var example_msgs = {
+    "JNX_NewOrder1": "0031554f0001218172656631202020202020420000006400001c214441592000002c470001869f000000002041000000003131",
+	  "JNX_NewOrder2": "0031554f0001219c72656631202020202020530000012c00001c214441592000002c470001869f000000002041000000003131",
+	
+    "JNX_ReplaceOrder": "001b55550001218c0001218d0000006400002c470001869f2000000000",
+     "JNX_CancelOrder": "000a55580001218700000064",
+          
+ "JNX_OrderAccepted": "00425341000028d6468109300001218172656631202020202020420000006400001c214441592000002c470001869f00000000204102cd542a8b104837000000004c3131",
+     "JNX_OrderExecuted": "001f5345000028d6469f04f8000121810000006400002c474102cd542a8b10481b001f5345000028d6469f04f8000121820000006400002c475202cd542a8b10481b",
+     "JNX_OrderReplaced": "00355355000028d6488be4c00001218d420000006400001c214441592000002c470001869f2002cd542a8b104841000000004c0001218c",
+     "JNX_OrderCanceled": "00135343000028d647815290000121870000006455",
+     "JNX_OrderAIQCanceled": "",
+     "JNX_OrderRejected": "000f534a000028d6473184e00001218658",
+
+	 
+	 
+  
+    "JNX_LoginRequest": "002f4c55534552303150415353574F52443031202020202020202020202020202020202020202020202020202020202030",
+    "JNX_LoginAccepted": "001f41313537303633393837382020202020202020202020202020202020313233",
+   
+    "ServerHeartbeat": "000148",
+    "LoginRejected": "00024a53",
+    "ClientHeartbeat": "000152",	
+
+//    "EndofSession": "16",
+ //   "LogoutRequest": "17"	
+};
+            var selbox = document.getElementById("selectbox1");
+            var ouchmsgbox =document.getElementById("ouchmsg");
+             selbox.addEventListener("change", function(){ouchmsgbox.value = example_msgs[selbox.value];});
+
+            _.each( _.keys(example_msgs), function(key){ option= document.createElement("option"); option.text=key; option.value=key; selbox.add(option)});
+
+        </script>
+
+<script>
+
+  var asx_symbol_map = new Object();
+ //  _.each( _.rest(sessionStorage.ASXSYMBOLS.trim().split("\n")), function(entry){ var e =entry.split("|"); asx_symbol_map[ e[8]] = e[2]}) ;
+ //sessionStorage.ASXSYMBOLS = asx_symbol_map;
+ 
+</script>
+		
